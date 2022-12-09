@@ -7,6 +7,6 @@ edition = "2021"
 
 [dependencies]
 clap = { version = "3.0.14", features = [ "derive" ] }
-hydroflow = { git = "https://github.com/hydro-project/hydroflow" }
+hydroflow = "0.1"
 regex = "1.7.0"
 serde = "1.0.149"
