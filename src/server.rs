@@ -3,7 +3,6 @@ use crate::GraphType;
 use crate::protocol::KVSMessage;
 
 use hydroflow::hydroflow_syntax;
-use hydroflow::pusherator::Pusherator;
 use hydroflow::scheduled::graph::Hydroflow;
 use hydroflow::util::{UdpSink, UdpStream};
 
@@ -12,9 +11,9 @@ pub(crate) async fn run_server(outbound: UdpSink, inbound: UdpStream, graph: Opt
 
     let mut df: Hydroflow = hydroflow_syntax! {
         // NW channels
-        outbound_chan = merge() -> sink_async_serde(outbound);
-        inbound_chan = recv_stream_serde(inbound)
-            -> demux(|(m, a), tl!(puts, gets, errs)| match m {
+        outbound_chan = merge() -> dest_sink_serde(outbound);
+        inbound_chan = source_stream_serde(inbound)
+            -> demux(|(m, a), var_args!(puts, gets, errs)| match m {
                     KVSMessage::Put {..} => puts.give((m, a)),
                     KVSMessage::Get {..} => gets.give((m, a)),
                     _ => errs.give((m, a)),

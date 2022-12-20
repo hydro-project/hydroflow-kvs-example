@@ -1,7 +1,6 @@
 use std::net::SocketAddr;
 
 use hydroflow::hydroflow_syntax;
-use hydroflow::pusherator::Pusherator;
 use hydroflow::util::{UdpSink, UdpStream};
 
 use crate::helpers::parse_command;
@@ -18,15 +17,15 @@ pub(crate) async fn run_client(
 
     let mut hf = hydroflow_syntax! {
         // set up channels
-        outbound_chan = sink_async_serde(outbound);
-        inbound_chan = recv_stream_serde(inbound) -> map(|(m, _a)| m) -> demux(|m, tl!(resps, errs)| match m {
+        outbound_chan = dest_sink_serde(outbound);
+        inbound_chan = source_stream_serde(inbound) -> map(|(m, _a)| m) -> demux(|m, var_args!(resps, errs)| match m {
             KVSMessage::Response {..} => resps.give(m),
             _ => errs.give(m),
         });
         inbound_chan[errs] -> for_each(|m| println!("Received unexpected message type: {:?}", m));
 
         // read in commands from stdin and forward to server
-        recv_stdin()
+        source_stdin()
             -> filter_map(|line| parse_command(line.unwrap()))
             -> map(|msg| { (msg, server_addr) })
             -> outbound_chan;

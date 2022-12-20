@@ -1,7 +1,9 @@
+use std::net::SocketAddr;
+
 use clap::{ArgEnum, Parser};
 use client::run_client;
 use hydroflow::tokio;
-use hydroflow::util::{bind_udp_socket, ipv4_resolve};
+use hydroflow::util::{bind_udp_bytes, ipv4_resolve};
 use server::run_server;
 
 mod client;
@@ -25,10 +27,10 @@ enum GraphType {
 struct Opts {
     #[clap(arg_enum, long)]
     role: Role,
-    #[clap(long)]
-    addr: String,
-    #[clap(long)]
-    server_addr: Option<String>,
+    #[clap(long, value_parser = ipv4_resolve)]
+    addr: SocketAddr,
+    #[clap(long, value_parser = ipv4_resolve)]
+    server_addr: Option<SocketAddr>,
     #[clap(arg_enum, long)]
     graph: Option<GraphType>,
 }
@@ -39,19 +41,19 @@ async fn main() {
 
     match opts.role {
         Role::Client => {
-            let (outbound, inbound) = bind_udp_socket(opts.addr.clone()).await;
-            println!("Client is bound to {}", opts.addr.clone());
+            let (outbound, inbound, bound_addr) = bind_udp_bytes(opts.addr).await;
+            println!("Client is bound to {}", bound_addr);
             println!(
                 "Attempting to connect to server at {}",
-                opts.server_addr.clone().unwrap()
+                opts.server_addr.unwrap()
             );
-            let server_addr = ipv4_resolve(opts.server_addr.clone().unwrap());
-            run_client(outbound, inbound, server_addr, opts.graph.clone()).await;
+            let server_addr = opts.server_addr.unwrap();
+            run_client(outbound, inbound, server_addr, opts.graph).await;
         }
         Role::Server => {
-            let (outbound, inbound) = bind_udp_socket(opts.addr.clone()).await;
-            println!("Listening on {}", opts.addr.clone());
-            run_server(outbound, inbound, opts.graph.clone()).await;
+            let (outbound, inbound, bound_addr) = bind_udp_bytes(opts.addr).await;
+            println!("Listening on {}", bound_addr);
+            run_server(outbound, inbound, opts.graph).await;
         }
     }
 }
